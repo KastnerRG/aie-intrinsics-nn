@@ -1,0 +1,9 @@
+{
+  "name": "Versal-Linux-cmd",
+  "type": "HLS",
+  "configuration": {
+    "componentType": "HLS",
+    "configFiles": ["pl_kernels\/s2mm.cfg"],
+    "work_dir": "s2mm"
+  }
+}
