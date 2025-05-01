@@ -25,7 +25,7 @@ public:
 
 	  connect< window<DX*sizeof(int16_t)> >  (X.out[0], gemv_kernel.in[0]);
 	  connect< window<DY*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
-		source(gemv_kernel) = "kernels/kernels.cc";
+	  source(gemv_kernel) = "kernels/kernels.cc";
 
 	  runtime<ratio>(gemv_kernel) = 1.0;
   }
@@ -35,7 +35,7 @@ simpleGraph mygraph;
 
 int main(void) {
   mygraph.init();
-  mygraph.run(10);
+  mygraph.run(20);
   mygraph.end();
   return 0;
 }
