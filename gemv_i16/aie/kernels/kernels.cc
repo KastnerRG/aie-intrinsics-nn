@@ -44,6 +44,6 @@ void GemV(
         );
     }
 
-    aie::vector<DTYPE, DY> vy = acc.template to_vector<DTYPE>(0);
-    aie::store_v((DTYPE*)out, vy);
+    aie::vector<DTYPE, DY> vy = acc.to_vector<DTYPE>();
+    window_writeincr(out, vy);
 }
