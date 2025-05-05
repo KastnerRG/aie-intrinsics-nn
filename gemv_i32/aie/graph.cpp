@@ -7,7 +7,6 @@ using namespace adf;
 
 #define DX 16
 #define DY 16
-#define DV 8
 
 class simpleGraph : public adf::graph {
 private:
@@ -22,7 +21,7 @@ public:
 
 		X = input_plio::create(plio_128_bits, "data/x.txt");
 		Y = output_plio::create(plio_128_bits, "data/y_sim.txt");
-		gemv_kernel = kernel::create(GemV);
+		gemv_kernel = kernel::create(GemV8); // Modify to use GemV8 or GemV4
 
 	  connect< window<DX*sizeof(int32_t)> >  (X.out[0], gemv_kernel.in[0]);
 	  connect< window<DY*sizeof(int32_t)> >  (gemv_kernel.out[0], Y.in[0]);

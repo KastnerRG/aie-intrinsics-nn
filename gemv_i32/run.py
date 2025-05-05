@@ -4,7 +4,6 @@ import numpy as np
 num_time_steps = 20
 DX = 16  # Num inputs
 DY = 16  # Num outputs
-DV = 8   # Num lanes
 Q = 2    # Number of splits along DX
 dtype = np.int32
 
@@ -25,7 +24,6 @@ with open('aie/kernels/matrix.h', 'w') as f:
 #define DTYPE int32
 #define DX {DX}
 #define DY {DY}
-#define DV {DV}
 #define Q {Q}
 #define MQS {mat_concat}
 
