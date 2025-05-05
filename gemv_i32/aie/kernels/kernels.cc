@@ -10,12 +10,12 @@
 // #include <stdlib.h>
 // #include <type_traits>
 
-// GemV8: 
+// GemV8: 79 clocks
 // Main: 
 // II  : 
 // Lat : 
 
-// GemV4: 
+// GemV4: 87 clocks
 // Main: 
 // II  : 
 // Lat : 
