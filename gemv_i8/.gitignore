@@ -1,0 +1,15 @@
+*.log
+*.a
+*.vcd
+.AIE_SIM_CMD_LINE_OPTIONS
+/aiesimulator_output
+/.Xil
+/Work
+Map_Report.csv
+pl_sample_counts
+plio_throughput_info.json
+sol.db
+data
+ISS_RPC_SERVER_PORT 
+plio_throughput_info.json 
+pl_sample_counts 
