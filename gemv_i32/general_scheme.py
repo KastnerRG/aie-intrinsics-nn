@@ -22,4 +22,6 @@ step = 16
 buffer_size = 16
 
 indices = general_scheme(rows, cols, start, offset, step, buffer_size)
-print("General Scheme Indices:", indices)
+print("General Scheme Indices:")
+for row in indices:
+    print(row)
