@@ -20,7 +20,7 @@
  *
  */
 
-// optimized matrix multiplication kernel ( clocks)
+// optimized matrix multiplication kernel (1071 clocks)
 void gemm(input_window_int32 * __restrict matA, input_window_int32 * __restrict matB,
 						output_window_int32 * __restrict matC) {
 
@@ -35,10 +35,10 @@ void gemm(input_window_int32 * __restrict matA, input_window_int32 * __restrict 
 	const int32* __restrict pB = (int32*) matB->ptr;
 	int32* __restrict pC = (int32*) matC->ptr;
 
-//	// for profiling
-	// unsigned long long cycle_num[2];
-	// aie::tile tile = aie::tile::current();
-	// cycle_num[0] = tile.cycles();
+	// for profiling
+	unsigned long long cycle_num[2];
+	aie::tile tile = aie::tile::current();
+	cycle_num[0] = tile.cycles();
 
 	// printf("Starting...");
 	// unroll the loops for more optimization
@@ -111,9 +111,6 @@ void gemm(input_window_int32 * __restrict matA, input_window_int32 * __restrict 
 		// printf("chkpt %d\n", i);
 
 	}
-	// cycle_num[1]=tile.cycles();//cycle counter of the AI Engine tile
-	// printf("start=%llu,end=%llu,total=%llu\n",cycle_num[0],cycle_num[1],cycle_num[1]-cycle_num[0]);
-    int one = *(pA + ( 6 * (single_K/K_API) + 0) * MMUL::size_A);
-    int two = *(pA + ( (6+1) * (single_K/K_API) + 0) * MMUL::size_A);
-    printf("A0[%d] = %d; A1[%d] = %d\n", 0, one, 0, two);
+	cycle_num[1]=tile.cycles();//cycle counter of the AI Engine tile
+	printf("start=%llu,end=%llu,total=%llu\n",cycle_num[0],cycle_num[1],cycle_num[1]-cycle_num[0]);
 }
