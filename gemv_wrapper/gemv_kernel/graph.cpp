@@ -1,0 +1,38 @@
+
+#include <adf.h>
+#include "kernels.h"
+#include <vector>
+
+#define DX 16
+#define DY 16
+
+using namespace adf;
+
+class simpleGraph : public adf::graph {
+private:
+  kernel gemv_kernel;
+public:
+  input_plio X;
+  output_plio Y;
+
+  simpleGraph() {
+    X = input_plio::create(plio_128_bits, "data/x.txt");
+    Y = output_plio::create(plio_128_bits, "data/y_sim.txt");
+    gemv_kernel = kernel::create(GemV_int16_int16_Mac16);
+
+    connect< window<DX*sizeof(int16_t)> >(X.out[0], gemv_kernel.in[0]);
+    connect< window<DY*sizeof(int16_t)> >(gemv_kernel.out[0], Y.in[0]);
+
+    source(gemv_kernel) = "kernels.cc";
+    runtime<ratio>(gemv_kernel) = 1.0;
+  }
+};
+
+simpleGraph mygraph;
+
+int main() {
+  mygraph.init();
+  mygraph.run(20);
+  mygraph.end();
+  return 0;
+}
