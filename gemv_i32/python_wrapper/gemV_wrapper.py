@@ -11,12 +11,12 @@ TEMPLATE_HEADER = dedent(r"""
 #define M {M}
 #endif
 
-#ifndef K
-#define K {K}
+#ifndef DX
+#define DX {K}
 #endif
 
-#ifndef N
-#define N {N}
+#ifndef DY
+#define DY {N}
 #endif
 
 #define V8 8
@@ -28,35 +28,39 @@ void GemV8(
     input_window_int32 * __restrict in, 
     output_window_int32 * __restrict out)
 {
-    aie::accum<acc80, V8> acc1 (aie::zeros<acc80,V8>());
-    aie::accum<acc80, V8> acc2 (aie::zeros<acc80,V8>());
-    aie::vector<DTYPE,DY> m;
-    aie::vector<DTYPE,V8> vx;
-
-    for (int i=0; i < DY/V8; ++i) {
-        vx = window_readincr_v8(in);
-        
-        for (int j=0; j < V8; ++j) {
-            m = aie::load_v<DY>((DTYPE*)(matrix[(V8*i + j)%2][(V8*i + j)/2]));
+    v8int32 vx_arr[DX/V8];
+    for (int i = 0; i < DX/V8; ++i)
+        vx_arr[i] = window_readincr_v8(in);    
+    
+    for (int k = 0; k < DY/8; ++k) {
+        aie::accum<acc80, V8> acc (aie::zeros<acc80,V8>());
+     
+        for (int i = 0; i < DX/V8; ++i) {
+            v8int32 vx = vx_arr[i];
             
-            acc1 = lmac8(
-                acc1,
-                m,
-                0,
-                0x76543210,
-                vx,
-                j,
-                0x0
-            );
+            for (int j = 0; j < V8; ++j) {
+                v8int32 m_lo = aie::load_v<8>((DTYPE*)
+                    (&matrix[(V8*i + j)%2][(V8*i + j)/2][k*V8]));
 
-            acc2 = lmac8(acc2, m, V8, 0x76543210, vx, j, 0x0);
+                alignas(32) int32 zeros[8] = {0};
+                v8int32 m_hi = aie::load_v<8>(zeros);
+
+                v16int32 m16 = concat(m_lo, m_hi);
+                
+                acc = lmac8(
+                    acc,
+                    m16,
+                    0,
+                    0x76543210,
+                    vx,
+                    j,
+                    0x0
+                );
+            }
         }
+        aie::vector<DTYPE, V8> vy1 = acc.to_vector<DTYPE>();
+        window_writeincr(out, vy1);
     }
-
-    aie::vector<DTYPE, V8> vy1 = acc1.to_vector<DTYPE>();
-    aie::vector<DTYPE, V8> vy2 = acc2.to_vector<DTYPE>();
-    window_writeincr(out, vy1);
-    window_writeincr(out, vy2);
 }
 """)
 
