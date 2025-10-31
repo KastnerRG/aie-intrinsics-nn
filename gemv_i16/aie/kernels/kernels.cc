@@ -46,4 +46,40 @@ void GemV(
 
     aie::vector<DTYPE, DY> vy = acc.to_vector<DTYPE>();
     window_writeincr(out, vy);
+} 
+
+
+void GemV(
+	input_window_int16 * __restrict in,
+  output_window_int16 * __restrict out)
+{
+    aie::accum<acc48, DY> acc (aie::zeros<acc48,DY>());
+    aie::vector<DTYPE,DY> m [Q];
+    aie::vector<DTYPE,DX> vx = window_readincr_v16(in);
+
+    for (int i=0, id=0; i<DX; i+=Q, id+=DY) {
+        for (int q=0; q<Q; q++)
+            m[q] = aie::load_v<DY>((DTYPE*)matrix[q] + id);
+
+        // https://www.xilinx.com/htmldocs/xilinx2022_2/aiengine_intrinsics/intrinsics/group__vect__mult__16x16.html#gac7a2f861000ea79918c5dc662f9be71d
+        acc = mac8(
+            acc,           // v8acc48 acc
+
+            // data buffer - 16bx16b scheme
+            concat(MQS),   // v32i16  xbuff       - Input buffer of 32 elements of type i16
+            0,             // int     xstart      - Starting position offset applied to all lanes of input from X buffer. xstart is restricted to multiples of 2 as granularity for xbuff is 32-bit.
+            0x33323130,    // uint    xoffsets    - 4b offset for each lane, corresponds to 2x the lane number and each second lane is an offset to the lane before + 1. LSB apply to first lane
+            16,             // int     xstep
+            0x3120,        // uint    xsquare     - Select order of the mini-permute square (default=0x3210). LSB apply to first element
+
+            // coef buffer - general scheme
+            vx,            // v16i16  zbuff       - Input buffer of 16 elements of type i16
+            i,             // int     zstart      - Starting position offset applied to all lanes for input from Z buffer. This must be a compile time constant. Only the 4 LSB of the argument are used.
+            0x0,           // uint    zoffsets    - 4b offset for each lane, applied to input from Z buffer. LSB apply to first lane
+            1              // int     zstep       - Step between each column for selection in the zbuffer.
+        );
+    }
+
+    aie::vector<DTYPE, DY> vy = acc.to_vector<DTYPE>();
+    window_writeincr(out, vy);
 }
