@@ -16,9 +16,9 @@ void GemV(
 	input_window_int16 * __restrict in, 
   output_window_int16 * __restrict out)
 {
-    aie::accum<acc48, DY> acc (aie::zeros<acc48,DY>());
-    aie::vector<DTYPE,DY> m [Q];
-    aie::vector<DTYPE,DX> vx = window_readincr_v16(in);
+    aie::accum<acc48, 16> acc (aie::zeros<acc48,16>());
+    aie::vector<DTYPE,16> m [Q];
+    aie::vector<DTYPE,16> vx = window_readincr_v16(in);
 
     for (int i=0, id=0; i<DX; i+=Q, id+=DY) {
         for (int q=0; q<Q; q++)
