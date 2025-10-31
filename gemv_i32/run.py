@@ -1,18 +1,24 @@
 import numpy as np
+import argparse
 
-# Parameters
-num_time_steps = 20
-DX = 16  # Num inputs
-DY = 16  # Num outputs
-Q = 2    # Number of splits along DX
+parser = argparse.ArgumentParser()
+parser.add_argument('--DX', type=int, required=True, help='Number of inputs (columns of A)')
+parser.add_argument('--DY', type=int, required=True, help='Number of outputs (columns of M)')
+parser.add_argument('--AX', type=int, required=True, help='Number of rows in A (time steps)')
+args = parser.parse_args()
+
+DX = args.DX
+DY = args.DY
+AX = args.AX
+Q = 2    # keep Q fixed
 dtype = np.int32
 
 mat_concat = ','.join([f'm[{i}]' for i in range(Q)])
 
 # Generate matrix and input signals
 mat_t = np.random.randint(0, 10, size=(DX, DY), dtype=dtype)
-x = np.random.randint(0, 10, size=(num_time_steps, DX), dtype=dtype)
-np.savetxt("data/x.txt", x.reshape(num_time_steps*4, DX//4), fmt='%d')
+x = np.random.randint(0, 10, size=(AX, DX), dtype=dtype)
+np.savetxt("data/x.txt", x.reshape(-1, 4), fmt='%d')
 
 # Prepare matrix for C header
 rows_per_mat = DX // Q
@@ -42,7 +48,5 @@ alignas(32) const DTYPE matrix[{Q}][{rows_per_mat}][{DY}] = {{''')
     f.write('};\n\n#endif // MATRIX_H\n')
 
 # Compute expected output
-# y_exp = np.zeros((num_time_steps, DY), dtype=dtype)
 y_exp = (x @ mat_t).astype(np.int32)
-
-np.savetxt("data/y_exp.txt", y_exp.reshape(num_time_steps*4, DY//4), fmt='%d')
+np.savetxt("data/y_exp.txt", y_exp.reshape(-1, 4), fmt='%d')
