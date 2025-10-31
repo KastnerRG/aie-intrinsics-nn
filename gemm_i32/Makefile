@@ -47,7 +47,7 @@ SW_EMU_CMD := ./host_ps_on_x86 a.xclbin
 HW_EMU_CMD := ./launch_hw_emu.sh -aie-sim-options ../aiesimulator_output/aiesim_options.txt -add-env AIE_COMPILER_WORKDIR=../Work 
 
 AIE_INCLUDE_FLAGS := --include "$(XILINX_VITIS)/aietools/include" --include "./aie" --include "./data" --include "./aie/kernels" --include "./" --aie.xlopt=0
-AIE_FLAGS := $(AIE_INCLUDE_FLAGS) --platform $(BASE_PLATFORM) --work_dir ./Work --aie.heapsize=2048
+AIE_FLAGS := $(AIE_INCLUDE_FLAGS) --platform $(BASE_PLATFORM) --work_dir ./Work
 
 ifeq ($(TARGET),sw_emu)
 	AIE_FLAGS += --target x86sim
@@ -156,7 +156,7 @@ analyze: run_sim
 
 golden: run.py
 	mkdir -p data
-	python run.py
+	python3 run.py
 
 
 #AIE or X86 compilation

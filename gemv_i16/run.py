@@ -1,41 +1,94 @@
 import numpy as np
 
 # Parameters
+while True:
+    s = input("Enter DX (e.g., 16): ").strip()
+    try:
+        DX = int(s)
+        break
+    except ValueError:
+        print("Please enter an integer (e.g., 16).")
+        
+while True:
+    s = input("Enter DY (e.g., 16): ").strip()
+    try:
+        DY = int(s)
+        break
+    except ValueError:
+        print("Please enter an integer (e.g., 16).")
+
+while True:
+    data_type = input("Enter data type (int8, int16, int32): ").strip()
+    if data_type == "int8":
+        dtype = np.int8
+        z_col = 16         # AIE PLIO bitwidth = 128 bit. => 128 / 8 = 16
+        break
+    elif data_type == "int16":
+        dtype = np.int16
+        z_col = 8         # 128 / 16 = 8
+        break
+    elif data_type == "int32":
+        dtype = np.int32
+        z_col = 4         # 128 / 8 = 4
+        break
+    else:
+        print("Please enter an appropriate data type.")
+
 num_time_steps = 20
-DX = 16  # Num inputs
-DY = 16  # Num outputs
 Q = 2    # Number of splits along DX
-dtype = np.int16
 
 mat_concat = ','.join([f'm[{i}]' for i in range(Q)])
 
 # Generate matrix and input signals
 mat_t = np.random.randint(0, 10, size=(DX, DY), dtype=dtype)
+
 x = np.random.randint(0, 10, size=(num_time_steps, DX), dtype=dtype)
-np.savetxt("data/x.txt", x.reshape(num_time_steps*2, DX//2), fmt='%d')
 
-# Prepare matrix for C header
-rows_per_mat = DX // Q
+tokens = x.ravel()                # flatten 2D numpy array into 1D array
+pad = -DX % (z_col * 2)           # how many zeros to add
 
-with open('aie/kernels/matrix.h', 'w') as f:
+if pad:
+    zeros = np.zeros((num_time_steps, pad), dtype=x.dtype)
+    tokens = np.hstack([x, zeros]).ravel()
+
+new_x = tokens.reshape(-1, z_col)      # reshape the zero-padded 1D array into an 2D array with z_col columns
+np.savetxt("data/x.txt", new_x, fmt='%d')   # save the array into x.txt file
+
+mat_tokens = mat_t.ravel()            # flatten 2D numpy array into 1D array
+mat_pad = -DY % (z_col * 2)           # how many zeros to add in each row of matrix
+i = (DY - 1) // (z_col * 2) + 1
+
+if mat_pad:
+    zeros = np.zeros((DX, mat_pad), dtype=x.dtype)
+    mat_tokens = np.hstack([mat_t, zeros])
+
+new_mat_t = mat_tokens.reshape(-1, z_col * 2 * i)   
+
+rows_per_mat = (DX + Q - 1) // Q   
+
+with open('matrix.h', 'w') as f:
     f.write(f'''
 #ifndef MATRIX_H
 #define MATRIX_H
-#define DTYPE int16
-#define DX {DX}
-#define DY {DY}
+#define DTYPE {data_type}
+#define DX {rows_per_mat}
+#define DY {z_col * 2 * i}
 #define Q {Q}
 #define MQS {mat_concat}
 
-alignas(32) const DTYPE matrix[{Q}][{rows_per_mat}][{DY}] = {{''')
+alignas(32) const DTYPE matrix[{Q}][{rows_per_mat}][{z_col * 2 * i}] = {{''')
 
+    zero_row = ', '.join('0' for _ in range(z_col * 2 * i))
     for q in range(Q):
-        sub_mat = mat_t[q::Q, :]
+        sub_mat = new_mat_t[q::Q, :]                 
         f.write(f'    {{ // matrix block {q}\n')
-        for i in range(rows_per_mat):
-            row_vals = ', '.join([f'{val}' for val in sub_mat[i]])
-            end_char = ',' if i < rows_per_mat - 1 else ''
-            f.write(f'        {{{row_vals}}}{end_char}\n')
+        # real rows
+        for i in range(sub_mat.shape[0]):
+            row_vals = ', '.join(str(int(v)) for v in sub_mat[i])
+            f.write(f'        {{{row_vals}}},\n')
+        # pad rows if needed
+        for _ in range(rows_per_mat - sub_mat.shape[0]):
+            f.write(f'        {{{zero_row}}},\n')
         f.write('    }')
         f.write(',\n' if q < Q - 1 else '\n')
 
@@ -43,6 +96,12 @@ alignas(32) const DTYPE matrix[{Q}][{rows_per_mat}][{DY}] = {{''')
 
 # Compute expected output
 # y_exp = np.zeros((num_time_steps, DY), dtype=dtype)
-y_exp = (x @ mat_t).astype(np.int16)
+y_exp = (x @ mat_t).astype(dtype)
 
-np.savetxt("data/y_exp.txt", y_exp.reshape(num_time_steps*2, DY//2), fmt='%d')
+np.savetxt("data/y_exp.txt", y_exp.reshape(num_time_steps, DY), fmt='%d')
+
+
+
+
+
+

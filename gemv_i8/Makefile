@@ -156,7 +156,7 @@ analyze: run_sim
 
 golden: run.py
 	mkdir -p data
-	python run.py
+	python3 run.py
 
 
 #AIE or X86 compilation
