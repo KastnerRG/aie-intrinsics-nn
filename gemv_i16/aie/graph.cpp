@@ -1,4 +1,5 @@
 
+
 #include <adf.h>
 #include "kernels.h"
 #include <vector>
@@ -17,15 +18,15 @@ public:
 
   simpleGraph(){
 
-		X = input_plio::create(plio_128_bits, "data/x.txt");
-		Y = output_plio::create(plio_128_bits, "data/y_sim.txt");
-		gemv_kernel = kernel::create(GemV);
+                X = input_plio::create(plio_128_bits, "data/x.txt");
+                Y = output_plio::create(plio_128_bits, "data/y_sim.txt");
+                gemv_kernel = kernel::create(GemV_i16_mac16);
 
-	  connect< window<16*sizeof(int16_t)> >  (X.out[0], gemv_kernel.in[0]);
-	  connect< window<16*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
-	  source(gemv_kernel) = "kernels/kernels.cc";
+          connect< window<48*sizeof(int16_t)> >  (X.out[0], gemv_kernel.in[0]);
+          connect< window<30*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
+          source(gemv_kernel) = "kernels/kernels.cc";
 
-	  runtime<ratio>(gemv_kernel) = 1.0;
+          runtime<ratio>(gemv_kernel) = 1.0;
   }
 };
 

@@ -24,9 +24,11 @@ while True:
             mac_type = input("Enter mac function to use (mac8 or mac16): ").strip()
             if mac_type == "mac8":
                 x_col = 8
+                gemv_name = "GemV_i8_mac8"
                 break
             elif mac_type == "mac16":
                 x_col = 16
+                gemv_name = "GemV_i8_mac16"
                 break
             else:
                 print("Please enter an appropriate mac function.")             
@@ -39,9 +41,11 @@ while True:
             mac_type = input("Enter mac function to use (mac8 or mac16): ").strip()
             if mac_type == "mac8":
                 x_col = 8
+                gemv_name = "GemV_i16_mac8"
                 break
             elif mac_type == "mac16":
                 x_col = 16
+                gemv_name = "GemV_i16_mac16"
                 break
             else:
                 print("Please enter an appropriate mac function.")  
@@ -54,9 +58,11 @@ while True:
             mac_type = input("Enter mac function to use (lmac4 or lmac8): ").strip()
             if mac_type == "lmac4":
                 x_col = 4
+                gemv_name = "GemV_i32_lmac4"
                 break
             elif mac_type == "lmac8":
                 x_col = 8
+                gemv_name = "GemV_i32_lmac8"
                 break
             else:
                 print("Please enter an appropriate mac function.")  
@@ -135,6 +141,55 @@ y_exp = np.matmul(x, mat_t)
 
 np.savetxt("data/y_exp.txt", y_exp.reshape(-1, z_col), fmt='%d')
 
+
+################################################################
+# creating graph.cpp
+
+num_vx = (DX + x_col - 1) // x_col
+
+
+with open('aie/graph.cpp', 'w') as f:
+    f.write(f'''
+
+#include <adf.h>
+#include "kernels.h"
+#include <vector>
+
+using namespace adf;
+
+
+class simpleGraph : public adf::graph {{
+private:
+  kernel gemv_kernel;
+
+public:
+
+  input_plio  X;
+  output_plio Y;
+
+  simpleGraph(){{
+
+                X = input_plio::create(plio_128_bits, "data/x.txt");
+                Y = output_plio::create(plio_128_bits, "data/y_sim.txt");
+                gemv_kernel = kernel::create({gemv_name});
+
+          connect< window<{num_vx*16}*sizeof(int16_t)> >  (X.out[0], gemv_kernel.in[0]);
+          connect< window<{DY}*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
+          source(gemv_kernel) = "kernels/kernels.cc";
+
+          runtime<ratio>(gemv_kernel) = 1.0;
+  }}
+}};
+
+simpleGraph mygraph;
+
+int main(void) {{
+  mygraph.init();
+  mygraph.run({num_time_steps});
+  mygraph.end();
+  return 0;
+}}'''
+)
 
 
 
