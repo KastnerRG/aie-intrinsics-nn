@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 # Parameters
 while True:
@@ -96,15 +97,16 @@ np.savetxt("data/x.txt", new_x, fmt='%d')   # save the array into x.txt file
 
 mat_tokens = mat_t.ravel()            # flatten 2D numpy array into 1D array
 mat_pad = -DY % x_col           # how many zeros to add in each row of matrix
-i = (DY - 1) // x_col + 1
+num_xcol = (DY - 1) // x_col + 1
 
 if mat_pad:
     zeros = np.zeros((DX, mat_pad), dtype=x.dtype)
     mat_tokens = np.hstack([mat_t, zeros])
 
-new_mat_t = mat_tokens.reshape(-1, x_col*i)  
+new_mat_t = mat_tokens.reshape(-1, x_col*num_xcol)  
 
 rows_per_mat = (DX + Q - 1) // Q   
+rows_per_mat = ((rows_per_mat+3) // 4) * 4
 
 with open('aie/kernels/matrix.h', 'w') as f:
     f.write(f'''
@@ -112,13 +114,13 @@ with open('aie/kernels/matrix.h', 'w') as f:
 #define MATRIX_H
 #define DTYPE {data_type}
 #define DX {rows_per_mat*2}
-#define DY {x_col * i}
+#define DY {x_col * num_xcol}
 #define Q {Q}
 #define MQS {mat_concat}
 
-alignas({x_col * bit // 8}) const DTYPE matrix[{Q}][{rows_per_mat}][{x_col * i}] = {{''')
+alignas({x_col * bit // 8}) const DTYPE matrix[{Q}][{rows_per_mat}][{x_col * num_xcol}] = {{''')
 
-    zero_row = ', '.join('0' for _ in range(x_col * i))
+    zero_row = ', '.join('0' for _ in range(x_col * num_xcol))
     for q in range(Q):
         sub_mat = new_mat_t[q::Q, :]                 
         f.write(f'    {{ // matrix block {q}\n')
@@ -139,14 +141,28 @@ alignas({x_col * bit // 8}) const DTYPE matrix[{Q}][{rows_per_mat}][{x_col * i}]
 # y_exp = np.zeros((num_time_steps, DY), dtype=dtype)
 y_exp = np.matmul(x, mat_t)
 
-np.savetxt("data/y_exp.txt", y_exp.reshape(-1, z_col), fmt='%d')
+flat = y_exp.ravel()
 
+with open("data/y_exp.txt", "w") as f:
+    for i in range(0, flat.size, DY):
+        num_elem = DY
+        for j in range(0, math.ceil(DY/z_col)):
+            if num_elem >= z_col:
+                row = flat[i + j*z_col : i + j*z_col + z_col]
+            else:
+                row = list(flat[i + j*z_col : i + j*z_col + num_elem])
+                if num_elem % 2 == 1:
+                    row += [0]
+
+            line = " ".join(str(int(v)) for v in row)
+            f.write(line + "\n")
+            num_elem -= z_col
 
 ################################################################
 # creating graph.cpp
 
-num_vx = (DX + x_col - 1) // x_col
-
+num_vx = (DX + 16 - 1) // 16  # number of input load necessary
+graph_DY = DY if DY % 2 == 0 else DY+1  # number of samples for output window has to be even number
 
 with open('aie/graph.cpp', 'w') as f:
     f.write(f'''
@@ -174,7 +190,7 @@ public:
                 gemv_kernel = kernel::create({gemv_name});
 
           connect< window<{num_vx*16}*sizeof(int16_t)> >  (X.out[0], gemv_kernel.in[0]);
-          connect< window<{DY}*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
+          connect< window<{graph_DY}*sizeof(int16_t)> >  (gemv_kernel.out[0], Y.in[0]);
           source(gemv_kernel) = "kernels/kernels.cc";
 
           runtime<ratio>(gemv_kernel) = 1.0;
